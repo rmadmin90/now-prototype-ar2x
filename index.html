@@ -503,6 +503,11 @@ function renderField(){
     const row=document.createElement('div');
     row.className='field-item';row.dataset.id=task.id;row.dataset.idx=i;row.dataset.type=task.type;
 
+    // Thread rows get tinted background + left border
+    if(isThread){
+      row.style.cssText=`background:${baseColour}08;border-left:2px solid ${baseColour}28;overflow:visible;`;
+    }
+
     const reveal=document.createElement('div');reveal.className='swipe-reveal';
     reveal.innerHTML='<span>→ seeds</span>';row.appendChild(reveal);
 
@@ -537,6 +542,7 @@ function renderField(){
         const stColour = fieldBright ? baseColour : dimColour;
         const subRow=document.createElement('div');
         subRow.className='field-sub-row';subRow.dataset.stidx=si;subRow.dataset.subtaskId=st.id;subRow.dataset.parentId=task.id;
+        subRow.style.cssText=`background:${baseColour}06;border-left:2px solid ${baseColour}18;`;
         const subH=document.createElement('div');subH.className='sub-drag-h';subH.textContent='⠿';subH.style.color=stColour;subH.dataset.subHandle='true';
         const stLbl=document.createElement('span');stLbl.className='sub-label';stLbl.style.color=stColour;
         if(isDone)stLbl.style.textDecoration='line-through';
