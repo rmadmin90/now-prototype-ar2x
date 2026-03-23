@@ -17,18 +17,29 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
       background-size: 256px 256px; }
 
-    /* ── PAGE TRANSITION WRAPPER ── */
+    /* ── APP CONTAINER ── */
     #app { height: 100dvh; position: relative; overflow: hidden; }
+
+    /* ── VIEWS — slide-over-top transition ── */
     .view {
       display: flex; height: 100dvh; flex-direction: column;
       position: absolute; inset: 0;
+      /* All views sit below by default */
       transform: translateX(100%);
-      transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
-      will-change: transform;
+      transition: none;
+      will-change: transform, opacity;
+      background-color: #0c0c0b;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
     }
-    .view.active { transform: translateX(0); }
-    .view.slide-out-left  { transform: translateX(-30%); }
-    .view.slide-out-right { transform: translateX(100%); }
+    .view.active {
+      transform: translateX(0);
+      z-index: 2;
+    }
+    .view.animating-in {
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease;
+      z-index: 3;
+    }
 
     /* ── SHARED ── */
     .topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 28px 0; position: relative; z-index: 2; flex-shrink: 0; padding-top: max(20px, env(safe-area-inset-top)); }
@@ -50,10 +61,11 @@
     #task-text { line-height: 1.08; letter-spacing: -0.02em; word-break: break-word; hyphens: auto; color: #f0ead8; transition: opacity 0.42s ease, transform 0.42s ease; text-align: center; width: 100%; }
     #task-text.out { opacity: 0; transform: translateY(-20px); }
     .empty-msg { font-style: italic; font-size: 24px; color: #f0ead835; line-height: 1.5; text-align: center; }
-    #completion-glow { position: absolute; inset: 0; pointer-events: none; z-index: 10; opacity: 0; }
+    /* Glow centred behind text */
+    #completion-glow { position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0; }
     #thread-complete-label { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: #c8a96e; opacity: 0; pointer-events: none; z-index: 11; }
 
-    /* ── TICK BUTTON (now screen) ── */
+    /* ── TICK BUTTON (now) ── */
     .tick-area { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding: 0 0 16px; position: relative; z-index: 2; }
     #tick-btn { background: none; border: none; cursor: pointer; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
     #tick-btn svg { transition: transform 0.2s ease; }
@@ -72,7 +84,7 @@
     .add-btn:active { background: #f0ead810; }
 
     /* ── QUEUE ITEMS ── */
-    .queue-item { display: flex; align-items: center; user-select: none; border-bottom: 1px solid #f0ead80c; position: relative; overflow: hidden; background: #0c0c0b; }
+    .queue-item { display: flex; align-items: center; user-select: none; border-bottom: 1px solid #f0ead80c; position: relative; overflow: hidden; background: #0c0c0b; flex-wrap: wrap; }
     .queue-item.dragging { opacity: 0.22; }
     .queue-item.drop-above::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
     .queue-item.drop-below::after  { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
@@ -82,37 +94,38 @@
     .item-label { font-family: 'DM Serif Display', serif; font-size: 17px; line-height: 1.3; }
     .item-label.seed-plain { color: #f0ead888; }
 
-    /* Field tick/complete button */
-    .field-tick-btn { width: 48px; height: 54px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s; opacity: 0.35; }
-    .field-tick-btn:active { opacity: 0.9; }
-    .field-tick-btn svg { transition: transform 0.15s; }
-    .field-tick-btn:active svg { transform: scale(0.85); }
+    /* Field tick button */
+    .field-tick-btn { width: 48px; height: 54px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; flex-shrink: 0; opacity: 0.32; transition: opacity 0.15s; }
+    .field-tick-btn:active { opacity: 0.85; }
+
+    /* Seeds remove button (X) */
+    .remove-btn { width: 48px; height: 54px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: #f0ead830; cursor: pointer; font-size: 20px; font-family: monospace; flex-shrink: 0; transition: color 0.15s; }
+    .remove-btn:active { color: #f0ead870; }
 
     /* Field thread chevron */
     .field-thread-chevron { font-family: 'DM Mono', monospace; font-size: 11px; opacity: 0.5; transition: transform 0.2s; flex-shrink: 0; margin-right: 4px; cursor: pointer; padding: 4px 2px; }
     .field-thread-chevron.open { transform: rotate(90deg); }
 
-    /* Field thread expanded subtasks */
+    /* Field subtask rows */
     .field-subtask-list { border-top: 1px solid rgba(255,255,255,0.06); width: 100%; }
-    .field-subtask-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.04); user-select: none; position: relative; background: #0c0c0b; }
+    .field-subtask-row { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.04); user-select: none; position: relative; background: #0c0c0b; touch-action: none; }
     .field-subtask-row:last-child { border-bottom: none; }
     .field-subtask-row.st-dragging { opacity: 0.22; }
-    .field-subtask-row.st-drop-above::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: #c8a96e; opacity: 0.6; }
-    .field-subtask-row.st-drop-below::after  { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: #c8a96e; opacity: 0.6; }
+    .field-subtask-row.st-drop-above::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: #c8a96e; opacity: 0.7; z-index: 3; }
+    .field-subtask-row.st-drop-below::after  { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: #c8a96e; opacity: 0.7; z-index: 3; }
     .field-subtask-drag { width: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 46px; font-family: 'DM Mono', monospace; font-size: 14px; color: #f0ead825; touch-action: none; cursor: grab; }
     .field-subtask-label { font-family: 'DM Serif Display', serif; font-size: 17px; line-height: 1.3; flex: 1; padding: 12px 0; }
-    .field-subtask-rm { width: 44px; height: 46px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; flex-shrink: 0; opacity: 0.3; transition: opacity 0.15s; }
+    .field-subtask-rm { width: 44px; height: 46px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; flex-shrink: 0; opacity: 0.28; transition: opacity 0.15s; }
     .field-subtask-rm:active { opacity: 0.8; }
-    .field-subtask-rm svg { pointer-events: none; }
 
-    /* Field cap reveal */
-    .field-reveal-btn { width: 100%; padding: 12px 0; background: none; border: none; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #f0ead840; cursor: pointer; text-align: center; transition: color 0.2s; }
-    .field-reveal-btn:active { color: #f0ead870; }
+    /* Field cap */
+    .field-cap-btn { width: 100%; padding: 12px 0; background: none; border: none; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #f0ead840; cursor: pointer; text-align: center; transition: color 0.2s; }
+    .field-cap-btn:active { color: #f0ead870; }
 
     /* ── SWIPE REVEAL ── */
-    .swipe-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 24px; pointer-events: none; opacity: 0; }
+    .swipe-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 24px; pointer-events: none; opacity: 0; z-index: 0; }
     .swipe-reveal span { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #c8a96e; }
-    .item-inner { display: flex; align-items: center; width: 100%; background: #0c0c0b; position: relative; z-index: 1; will-change: transform; flex-wrap: wrap; }
+    .item-inner { display: flex; align-items: center; width: 100%; background: #0c0c0b; position: relative; z-index: 1; will-change: transform; }
     .list-footer { font-family: 'DM Mono', monospace; font-size: 10px; color: #f0ead828; letter-spacing: 0.1em; margin-top: 20px; text-align: center; padding-bottom: 28px; }
     .empty-list { text-align: center; font-style: italic; font-size: 20px; color: #f0ead835; padding: 52px 0; line-height: 1.5; }
 
@@ -153,7 +166,7 @@
     .thread-task-input::placeholder { opacity: 0.3; }
     .thread-task-add-btn { background: none; border: 1px solid rgba(255,255,255,0.12); font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 12px; border-radius: 20px; cursor: pointer; white-space: nowrap; flex-shrink: 0; opacity: 0.55; }
     .thread-task-add-btn:active { opacity: 0.9; }
-    .thread-swipe-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 20px; pointer-events: none; opacity: 0; border-radius: 10px; overflow: hidden; }
+    .thread-swipe-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 20px; pointer-events: none; opacity: 0; border-radius: 10px; }
     .thread-swipe-reveal span { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #c8a96e; }
     @keyframes threadWave { 0%{box-shadow:inset 0 0 0 1px rgba(200,169,110,0);background:transparent;} 20%{box-shadow:inset 0 0 0 1px rgba(200,169,110,0.8);background:rgba(200,169,110,0.12);} 60%{box-shadow:inset 0 0 0 1px rgba(200,169,110,0.6);background:rgba(200,169,110,0.08);} 100%{box-shadow:inset 0 0 0 1px rgba(200,169,110,0);background:transparent;} }
     .thread-sent-flash { animation: threadWave 0.9s ease forwards; }
@@ -255,81 +268,88 @@
 </div>
 
 <script>
-// ── Page positions for transition direction ───────────────────────────────────
-const PAGE_ORDER = { seeds: 0, field: 1, now: 2 };
+// ── Page transition ───────────────────────────────────────────────────────────
+const PAGE_ORDER = { seeds:0, field:1, now:2 };
 let currentPage = 'now';
+let navLocked = false;
 
 function nav(to) {
-  if (to === currentPage) return;
+  if (to === currentPage || navLocked) return;
+  navLocked = true;
   closeAllSwatches();
-
-  const fromIdx = PAGE_ORDER[currentPage];
-  const toIdx   = PAGE_ORDER[to];
-  const goingRight = toIdx > fromIdx; // seeds→field→now = right
 
   const fromEl = document.getElementById('view-' + currentPage);
   const toEl   = document.getElementById('view-' + to);
+  const goRight = PAGE_ORDER[to] > PAGE_ORDER[currentPage];
 
-  // Position incoming page off screen in the correct direction
+  // Position incoming off screen
+  toEl.style.transform = goRight ? 'translateX(100%)' : 'translateX(-8%)';
+  toEl.style.opacity   = goRight ? '1' : '0.6';
   toEl.style.transition = 'none';
-  toEl.style.transform  = goingRight ? 'translateX(100%)' : 'translateX(-30%)';
-  toEl.classList.add('active');
+  toEl.style.zIndex = '3';
+  fromEl.style.zIndex = '2';
 
-  // Force reflow
+  // Render content before animating in
+  if (to === 'now')   renderNow();
+  if (to === 'field') renderField();
+  if (to === 'seeds') renderSeeds();
+
+  // Force reflow then animate
   toEl.offsetHeight;
-
-  // Animate both
-  toEl.style.transition   = 'transform 0.26s cubic-bezier(0.4, 0, 0.2, 1)';
-  toEl.style.transform    = 'translateX(0)';
-  fromEl.style.transition = 'transform 0.26s cubic-bezier(0.4, 0, 0.2, 1)';
-  fromEl.style.transform  = goingRight ? 'translateX(-30%)' : 'translateX(100%)';
+  toEl.classList.add('animating-in');
+  toEl.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease';
+  toEl.style.transform  = 'translateX(0)';
+  toEl.style.opacity    = '1';
 
   setTimeout(() => {
+    toEl.classList.add('active');
+    toEl.classList.remove('animating-in');
+    toEl.style.transition = '';
+    toEl.style.transform  = '';
+    toEl.style.opacity    = '';
+    toEl.style.zIndex     = '';
     fromEl.classList.remove('active');
-    fromEl.style.transition = '';
-    fromEl.style.transform  = '';
-    toEl.style.transition   = '';
-    toEl.style.transform    = '';
+    fromEl.style.zIndex   = '';
     currentPage = to;
-  }, 270);
-
-  if (to === 'now')   renderNow();
-  if (to === 'field') { renderField();  setTimeout(() => document.getElementById('field-input').focus(), 300); }
-  if (to === 'seeds') { renderSeeds();  setTimeout(() => document.getElementById('seeds-input').focus(), 300); }
+    navLocked = false;
+    if (to === 'field') setTimeout(() => document.getElementById('field-input').focus(), 50);
+    if (to === 'seeds') setTimeout(() => document.getElementById('seeds-input').focus(), 50);
+  }, 290);
 }
 
 // ── Colours ───────────────────────────────────────────────────────────────────
 const THREAD_COLOURS = {
-  blue:   { base: '#7eb8c9', dim: 'rgba(126,184,201,0.32)' },
-  pink:   { base: '#c9a0a0', dim: 'rgba(201,160,160,0.32)' },
-  orange: { base: '#c8a06e', dim: 'rgba(200,160,110,0.32)' },
-  green:  { base: '#8fba9a', dim: 'rgba(143,186,154,0.32)' },
+  blue:   { base:'#7eb8c9', dim:'rgba(126,184,201,0.30)' },
+  pink:   { base:'#c9a0a0', dim:'rgba(201,160,160,0.30)' },
+  orange: { base:'#c8a06e', dim:'rgba(200,160,110,0.30)' },
+  green:  { base:'#8fba9a', dim:'rgba(143,186,154,0.30)' },
 };
 const DEFAULT_COLOUR = 'blue';
 function tc(c) { return THREAD_COLOURS[c] || THREAD_COLOURS[DEFAULT_COLOUR]; }
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const SK = { field:'nf_field_v4', seedTasks:'nf_seedtasks_v2', threads:'nf_threads_v2', order:'nf_order_v2' };
+// fieldTasks: [{id, text, type:'task'|'thread', colour, fromThread, subtasks:[{id,text,done}], subtaskIdx, expanded}]
+const SK = { field:'nf_field_v5', seedTasks:'nf_seedtasks_v2', threads:'nf_threads_v2', order:'nf_order_v2' };
 let fieldTasks=[], seedTasksMap={}, threadsMap={}, seedsOrder=[];
 let transitioning=false;
-let fieldExpanded=false; // cap state
+let fieldExpanded=false;
 
 function uid() { return Math.random().toString(36).slice(2,9); }
 
 function load() {
-  try { fieldTasks  =JSON.parse(localStorage.getItem(SK.field))    ||[]; } catch { fieldTasks=[]; }
-  try { seedTasksMap=JSON.parse(localStorage.getItem(SK.seedTasks))||{}; } catch { seedTasksMap={}; }
-  try { threadsMap  =JSON.parse(localStorage.getItem(SK.threads))  ||{}; } catch { threadsMap={}; }
-  try { seedsOrder  =JSON.parse(localStorage.getItem(SK.order))    ||[]; } catch { seedsOrder=[]; }
-  const knownTaskIds=Object.keys(seedTasksMap), knownThreadIds=Object.keys(threadsMap);
-  seedsOrder=seedsOrder.filter(e=>e.type==='task'?knownTaskIds.includes(e.id):knownThreadIds.includes(e.id));
-  knownTaskIds.forEach(id=>{if(!seedsOrder.find(e=>e.id===id))seedsOrder.push({type:'task',id});});
-  knownThreadIds.forEach(id=>{if(!seedsOrder.find(e=>e.id===id))seedsOrder.push({type:'thread',id});});
+  try{fieldTasks  =JSON.parse(localStorage.getItem(SK.field))    ||[];}catch{fieldTasks=[];}
+  try{seedTasksMap=JSON.parse(localStorage.getItem(SK.seedTasks))||{};}catch{seedTasksMap={};}
+  try{threadsMap  =JSON.parse(localStorage.getItem(SK.threads))  ||{};}catch{threadsMap={};}
+  try{seedsOrder  =JSON.parse(localStorage.getItem(SK.order))    ||[];}catch{seedsOrder=[];}
+  const ktIds=Object.keys(seedTasksMap), kthIds=Object.keys(threadsMap);
+  seedsOrder=seedsOrder.filter(e=>e.type==='task'?ktIds.includes(e.id):kthIds.includes(e.id));
+  ktIds.forEach(id=>{if(!seedsOrder.find(e=>e.id===id))seedsOrder.push({type:'task',id});});
+  kthIds.forEach(id=>{if(!seedsOrder.find(e=>e.id===id))seedsOrder.push({type:'thread',id});});
 }
-function saveField()   { try{localStorage.setItem(SK.field,   JSON.stringify(fieldTasks));}catch{} }
-function saveSeeds()   { try{localStorage.setItem(SK.seedTasks,JSON.stringify(seedTasksMap));}catch{} }
-function saveThreads() { try{localStorage.setItem(SK.threads, JSON.stringify(threadsMap));}catch{} }
-function saveOrder()   { try{localStorage.setItem(SK.order,   JSON.stringify(seedsOrder));}catch{} }
+function saveField()  {try{localStorage.setItem(SK.field,  JSON.stringify(fieldTasks));}catch{}}
+function saveSeeds()  {try{localStorage.setItem(SK.seedTasks,JSON.stringify(seedTasksMap));}catch{}}
+function saveThreads(){try{localStorage.setItem(SK.threads,JSON.stringify(threadsMap));}catch{}}
+function saveOrder()  {try{localStorage.setItem(SK.order,  JSON.stringify(seedsOrder));}catch{}}
 
 // ── Wake Lock ─────────────────────────────────────────────────────────────────
 async function requestWakeLock(){try{if('wakeLock'in navigator)await navigator.wakeLock.request('screen');}catch{}}
@@ -338,22 +358,14 @@ requestWakeLock();
 
 // ── Nav glow ──────────────────────────────────────────────────────────────────
 function flashNavLabel(which) {
-  const ids = which==='field'
-    ? ['nav-field','nav-field-f','nav-field-s']
-    : ['nav-seeds','nav-seeds-f','nav-seeds-s'];
-  ids.forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    el.classList.add('nav-glow');
-    setTimeout(()=>el.classList.remove('nav-glow'), 600);
-  });
+  const ids=which==='field'?['nav-field','nav-field-f','nav-field-s']:['nav-seeds','nav-seeds-f','nav-seeds-s'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.add('nav-glow');setTimeout(()=>el.classList.remove('nav-glow'),600);});
 }
 
 // ── Swatch ────────────────────────────────────────────────────────────────────
-let activeSwatchThreadId=null;
-document.addEventListener('click',(e)=>{
-  if(!e.target.closest('.thread-settings-btn')&&!e.target.closest('.swatch-popover')) closeAllSwatches();
-});
-function closeAllSwatches(){document.querySelectorAll('.swatch-popover').forEach(p=>p.remove());activeSwatchThreadId=null;}
+let activeSwatchId=null;
+document.addEventListener('click',(e)=>{if(!e.target.closest('.thread-settings-btn')&&!e.target.closest('.swatch-popover'))closeAllSwatches();});
+function closeAllSwatches(){document.querySelectorAll('.swatch-popover').forEach(p=>p.remove());activeSwatchId=null;}
 
 // ── NOW ───────────────────────────────────────────────────────────────────────
 function renderNow() {
@@ -366,93 +378,91 @@ function renderNow() {
 
   if(cur){
     const isThread=cur.type==='thread';
-    const displayText=isThread?(cur.subtasks[cur.subtaskIdx]?.text||''):cur.text;
+    // Find next non-done subtask
+    const activeSub=isThread?cur.subtasks.find((s,i)=>i>=cur.subtaskIdx&&!s.done):null;
+    const displayText=isThread?(activeSub?.text||cur.subtasks[cur.subtasks.length-1]?.text||''):cur.text;
     const colour=cur.colour?tc(cur.colour).base:'#f0ead8';
     textEl.textContent=displayText; textEl.style.color=colour; textEl.className='';
     if(isThread){lblEl.textContent=cur.fromThread;lblEl.style.color=colour;lblEl.style.display='';}
     else{lblEl.style.display='none';}
-
-    // Tick colour matches thread
-    const circle=document.getElementById('tick-circle');
-    const check=document.getElementById('tick-check');
-    if(cur.colour){
-      circle.setAttribute('stroke',colour+'50');
-      check.setAttribute('stroke',colour+'60');
-    } else {
-      circle.setAttribute('stroke','#f0ead830');
-      check.setAttribute('stroke','#f0ead840');
-    }
-
+    const c=cur.colour?colour+'50':'#f0ead830', ck=cur.colour?colour+'65':'#f0ead840';
+    document.getElementById('tick-circle').setAttribute('stroke',c);
+    document.getElementById('tick-check').setAttribute('stroke',ck);
     requestAnimationFrame(()=>fitText(textEl));
-    tickBtn.style.display='flex'; addBtn.style.display='none';
+    tickBtn.style.display='flex';addBtn.style.display='none';
   } else {
     textEl.innerHTML='<span class="empty-msg">nothing here right now.</span>';
-    textEl.style.color=''; textEl.style.fontSize='';
-    lblEl.style.display='none';
-    tickBtn.style.display='none'; addBtn.style.display='';
+    textEl.style.color='';textEl.style.fontSize='';
+    lblEl.style.display='none';tickBtn.style.display='none';addBtn.style.display='';
     document.getElementById('tick-circle').setAttribute('stroke','#f0ead830');
     document.getElementById('tick-check').setAttribute('stroke','#f0ead840');
   }
 }
 
-function fitText(el) {
+function fitText(el){
   const p=el.parentElement;
   const maxH=p.clientHeight*0.76,maxW=p.clientWidth*0.90;
-  let size=88; el.style.whiteSpace='normal'; el.style.fontSize=size+'px';
+  let size=88;el.style.whiteSpace='normal';el.style.fontSize=size+'px';
   while(size>22&&(el.scrollHeight>maxH||el.scrollWidth>maxW)){size-=2;el.style.fontSize=size+'px';}
 }
 
-function done() {
+function done(){
   if(!fieldTasks.length||transitioning)return;
   transitioning=true;
   const cur=fieldTasks[0];
   const isThread=cur.type==='thread';
-  const isLastSubtask=isThread&&cur.subtaskIdx>=cur.subtasks.length-1;
   const colour=cur.colour?tc(cur.colour).base:'#c8a96e';
 
   // Tick flash
   const circle=document.getElementById('tick-circle'),check=document.getElementById('tick-check'),lbl=document.getElementById('tick-label');
-  circle.setAttribute('stroke',colour); circle.setAttribute('fill',colour+'18');
-  check.setAttribute('stroke',colour); lbl.style.color=colour+'90';
+  circle.setAttribute('stroke',colour);circle.setAttribute('fill',colour+'18');
+  check.setAttribute('stroke',colour);lbl.style.color=colour+'90';
 
-  const textEl=document.getElementById('task-text'); textEl.classList.add('out');
+  const textEl=document.getElementById('task-text');textEl.classList.add('out');
 
-  // Glow
+  // Glow centred behind text (50% 50%)
   const glowEl=document.getElementById('completion-glow');
-  glowEl.style.background=`radial-gradient(circle at 50% 82%, ${colour} 0%, ${colour}50 20%, transparent 65%)`;
-  glowEl.style.transition='opacity 0.15s ease'; glowEl.style.opacity='1';
-  setTimeout(()=>{glowEl.style.transition='opacity 0.5s ease';glowEl.style.opacity='0';},200);
+  glowEl.style.background=`radial-gradient(circle at 50% 42%, ${colour} 0%, ${colour}45 25%, transparent 65%)`;
+  glowEl.style.transition='opacity 0.12s ease';glowEl.style.opacity='0.85';
+  setTimeout(()=>{glowEl.style.transition='opacity 0.55s ease';glowEl.style.opacity='0';},180);
 
   setTimeout(()=>{
-    if(isThread&&!isLastSubtask){
-      cur.subtaskIdx++; saveField(); transitioning=false;
-      resetTick(colour); textEl.classList.remove('out'); renderNow();
-    } else if(isThread&&isLastSubtask){
-      fieldTasks.shift(); saveField();
-      showThreadCompleteCeremony(cur.fromThread,colour,()=>{
-        transitioning=false; resetTick('#f0ead8'); textEl.classList.remove('out'); renderNow();
-      });
+    if(isThread){
+      // Mark current subtask done
+      if(cur.subtasks[cur.subtaskIdx])cur.subtasks[cur.subtaskIdx].done=true;
+      // Advance to next undone subtask
+      const nextIdx=cur.subtasks.findIndex((s,i)=>i>cur.subtaskIdx&&!s.done);
+      if(nextIdx!==-1){
+        cur.subtaskIdx=nextIdx;saveField();transitioning=false;
+        resetTickAppearance();textEl.classList.remove('out');renderNow();
+      } else {
+        // All done — thread complete ceremony
+        fieldTasks.shift();saveField();
+        showThreadCeremony(cur.fromThread,colour,()=>{
+          transitioning=false;resetTickAppearance();textEl.classList.remove('out');renderNow();
+        });
+      }
     } else {
-      fieldTasks.shift(); saveField(); transitioning=false;
-      resetTick('#f0ead8'); textEl.classList.remove('out'); renderNow();
+      fieldTasks.shift();saveField();transitioning=false;
+      resetTickAppearance();textEl.classList.remove('out');renderNow();
     }
   },420);
 }
 
-function resetTick(colour){
-  const isThread=fieldTasks[0]?.colour;
-  const c=isThread?tc(fieldTasks[0].colour).base+'50':'#f0ead830';
-  const ck=isThread?tc(fieldTasks[0].colour).base+'60':'#f0ead840';
+function resetTickAppearance(){
+  const next=fieldTasks[0];
+  const c=next?.colour?tc(next.colour).base+'50':'#f0ead830';
+  const ck=next?.colour?tc(next.colour).base+'65':'#f0ead840';
   document.getElementById('tick-circle').setAttribute('stroke',c);
   document.getElementById('tick-circle').setAttribute('fill','none');
   document.getElementById('tick-check').setAttribute('stroke',ck);
   document.getElementById('tick-label').style.color='#f0ead828';
 }
 
-function showThreadCompleteCeremony(name,colour,cb){
+function showThreadCeremony(name,colour,cb){
   const lbl=document.getElementById('thread-complete-label');
-  lbl.textContent=name; lbl.style.color=colour;
-  lbl.style.transition='opacity 0.3s ease'; lbl.style.opacity='1';
+  lbl.textContent=name;lbl.style.color=colour;
+  lbl.style.transition='opacity 0.3s ease';lbl.style.opacity='1';
   setTimeout(()=>{lbl.style.transition='opacity 0.5s ease';lbl.style.opacity='0';setTimeout(cb,500);},900);
 }
 
@@ -466,7 +476,6 @@ function addFieldTask(){
 }
 
 function completeFieldTask(id){
-  // Tick in field — removes task
   fieldTasks=fieldTasks.filter(t=>t.id!==id);
   saveField();renderField();
 }
@@ -488,11 +497,12 @@ function toggleFieldThread(fieldId){
 
 function removeFieldSubtask(fieldId,subtaskId){
   const task=fieldTasks.find(t=>t.id===fieldId);if(!task)return;
-  const idx=task.subtasks.findIndex(s=>s.id===subtaskId);
+  const idx=task.subtasks.findIndex(s=>s.id===subtaskId);if(idx===-1)return;
   task.subtasks=task.subtasks.filter(s=>s.id!==subtaskId);
-  // If we removed at or before current index, adjust
-  if(idx<=task.subtaskIdx&&task.subtaskIdx>0)task.subtaskIdx--;
+  // Keep subtaskIdx in bounds and pointing to an undone task
   if(task.subtaskIdx>=task.subtasks.length)task.subtaskIdx=Math.max(0,task.subtasks.length-1);
+  // Make sure subtaskIdx points to undone
+  while(task.subtaskIdx<task.subtasks.length&&task.subtasks[task.subtaskIdx]?.done)task.subtaskIdx++;
   saveField();renderField();
 }
 
@@ -501,26 +511,28 @@ function renderField(){
   list.innerHTML='';
   if(!fieldTasks.length){list.innerHTML='<p class="empty-list">nothing here right now.</p>';footer.textContent='';fieldExpanded=false;return;}
 
-  const visible=fieldExpanded?fieldTasks:fieldTasks.slice(0,FIELD_CAP);
-  const hidden=fieldTasks.length-FIELD_CAP;
+  const showAll=fieldExpanded||fieldTasks.length<=FIELD_CAP;
+  const visible=showAll?fieldTasks:fieldTasks.slice(0,FIELD_CAP);
+  const hiddenCount=fieldTasks.length-FIELD_CAP;
 
   visible.forEach((task,i)=>{
     const isThread=task.type==='thread';
+    const isFirst=i===0;
+    // All tasks in field: first item gets full brightness, rest dim
+    // Inside thread containers: ALL subtasks are dimmed (no special first-subtask treatment)
     const baseColour=task.colour?tc(task.colour).base:'#f0ead8';
-    const dimColour=task.colour?tc(task.colour).dim:'rgba(240,234,216,0.28)';
-    const labelColour=i===0?baseColour:dimColour;
+    const dimColour=task.colour?tc(task.colour).dim:'rgba(240,234,216,0.30)';
+    const labelColour=isFirst?baseColour:dimColour;
 
     const row=document.createElement('div');
-    row.className='queue-item';row.dataset.id=task.id;row.dataset.idx=i;row.style.flexWrap='wrap';
+    row.className='queue-item';row.dataset.id=task.id;row.dataset.idx=i;
 
-    // Swipe reveal (return to seeds)
     const reveal=document.createElement('div');reveal.className='swipe-reveal';
     reveal.innerHTML='<span>→ seeds</span>';row.appendChild(reveal);
 
     const inner=document.createElement('div');inner.className='item-inner';
-
     const handle=document.createElement('div');handle.className='drag-handle';handle.textContent='⠿';inner.appendChild(handle);
-    if(i===0){const dot=document.createElement('span');dot.className='item-dot';inner.appendChild(dot);}
+    if(isFirst){const dot=document.createElement('span');dot.className='item-dot';inner.appendChild(dot);}
 
     if(isThread){
       const chev=document.createElement('span');
@@ -535,28 +547,40 @@ function renderField(){
     if(!isThread)attachLongPress(lbl,(val)=>{task.text=val;saveField();});
     content.appendChild(lbl);inner.appendChild(content);
 
-    // Tick button (replaces ×)
+    // Tick button
     const tickBtn=document.createElement('button');tickBtn.className='field-tick-btn';
-    tickBtn.innerHTML=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="${labelColour}" stroke-width="1.2"/><polyline points="7,12.5 10.5,16 17,9" stroke="${labelColour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    tickBtn.innerHTML=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="${labelColour}" stroke-width="1.2" fill="none"/><polyline points="7,12.5 10.5,16 17,9" stroke="${labelColour}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     tickBtn.setAttribute('data-complete-id',task.id);
     inner.appendChild(tickBtn);
     row.appendChild(inner);
 
-    // Expanded subtask list with drag + delete
+    // Expanded subtask rows
     if(isThread&&task.expanded){
       const subList=document.createElement('div');subList.className='field-subtask-list';
+      subList.dataset.fieldId=task.id;
+
       task.subtasks.forEach((st,si)=>{
-        const subRow=document.createElement('div');subRow.className='field-subtask-row';subRow.dataset.stidx=si;
+        const isDone=st.done||si<task.subtaskIdx;
+        const isActive=si===task.subtaskIdx&&!st.done;
+        // ALL subtasks are dimmed — no bright first item inside container
+        const stColour=isActive?baseColour:dimColour;
+
+        const subRow=document.createElement('div');
+        subRow.className='field-subtask-row';subRow.dataset.stidx=si;subRow.dataset.subtaskId=st.id;
+
         const subHandle=document.createElement('div');subHandle.className='field-subtask-drag';subHandle.textContent='⠿';
-        subHandle.style.color=si===task.subtaskIdx?baseColour:dimColour;
+        subHandle.style.color=stColour;
+
         const stLbl=document.createElement('span');stLbl.className='field-subtask-label';
-        stLbl.style.color=si===task.subtaskIdx?baseColour:dimColour;
-        if(si<task.subtaskIdx)stLbl.style.textDecoration='line-through';
+        stLbl.style.color=stColour;
+        if(isDone)stLbl.style.textDecoration='line-through';
         stLbl.textContent=st.text;
-        attachLongPress(stLbl,(val)=>{task.subtasks[si].text=val;saveField();});
+        attachLongPress(stLbl,(val)=>{st.text=val;saveField();});
+
         const stRm=document.createElement('button');stRm.className='field-subtask-rm';
-        stRm.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="${baseColour}60" stroke-width="1.2"/><polyline points="7,12.5 10.5,16 17,9" stroke="${baseColour}60" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        stRm.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="${baseColour}55" stroke-width="1.2" fill="none"/><polyline points="7,12.5 10.5,16 17,9" stroke="${baseColour}55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         stRm.addEventListener('click',(e)=>{e.stopPropagation();removeFieldSubtask(task.id,st.id);});
+
         subRow.appendChild(subHandle);subRow.appendChild(stLbl);subRow.appendChild(stRm);
         subList.appendChild(subRow);
       });
@@ -567,21 +591,21 @@ function renderField(){
     list.appendChild(row);
   });
 
-  // Field cap reveal button
-  if(!fieldExpanded&&hidden>0){
-    const revBtn=document.createElement('button');revBtn.className='field-reveal-btn';
-    revBtn.textContent=`and ${hidden} more`;
-    revBtn.addEventListener('click',()=>{fieldExpanded=true;renderField();});
-    list.appendChild(revBtn);
+  // Cap toggle button
+  if(fieldTasks.length>FIELD_CAP){
+    const capBtn=document.createElement('button');capBtn.className='field-cap-btn';
+    capBtn.textContent=fieldExpanded?'fold ↑':`and ${hiddenCount} more`;
+    capBtn.addEventListener('click',()=>{fieldExpanded=!fieldExpanded;renderField();});
+    list.appendChild(capBtn);
   }
 
   footer.textContent=fieldTasks.length===1?'one thing.':`${fieldTasks.length} things. only the first one is real.`;
   initListDrag('field-list',fieldTasks,()=>{saveField();renderField();},t=>t.text);
   initFieldSwipeReturn();
-  initFieldDrop();
+  initFieldDropZones();
 }
 
-// Delegated tick complete in field
+// Delegated tick in field
 document.getElementById('field-list').addEventListener('click',(e)=>{
   const btn=e.target.closest('[data-complete-id]');if(!btn)return;
   completeFieldTask(btn.getAttribute('data-complete-id'));
@@ -589,9 +613,10 @@ document.getElementById('field-list').addEventListener('click',(e)=>{
 document.getElementById('field-input').addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();addFieldTask();}});
 
 // ── FIELD SUBTASK DRAG ────────────────────────────────────────────────────────
-let fStDragIdx=null, fStTaskId=null;
+let fStDragIdx=null,fStTaskId=null;
 function initFieldSubtaskDrag(subList,task){
   const rows=[...subList.querySelectorAll('.field-subtask-row')];
+  if(rows.length<2)return;
   rows.forEach((row,i)=>{
     const handle=row.querySelector('.field-subtask-drag');
     const doEnd=(toIdx,above)=>{
@@ -600,8 +625,9 @@ function initFieldSubtaskDrag(subList,task){
         let at=toIdx;if(fStDragIdx<toIdx)at--;if(!above)at++;
         at=Math.max(0,Math.min(at,task.subtasks.length));
         task.subtasks.splice(at,0,moved);
-        // Adjust subtaskIdx
-        if(fStDragIdx===task.subtaskIdx)task.subtaskIdx=at;
+        // Recalculate subtaskIdx — should point to first undone
+        task.subtaskIdx=task.subtasks.findIndex(s=>!s.done);
+        if(task.subtaskIdx===-1)task.subtaskIdx=task.subtasks.length;
         saveField();
       }
       fStDragIdx=null;fStTaskId=null;renderField();
@@ -618,37 +644,45 @@ function initFieldSubtaskDrag(subList,task){
   });
 }
 
-// ── FLUID CONTAINER DROP (drag task into/out of thread) ───────────────────────
-function initFieldDrop(){
-  // Allow dragging loose tasks INTO thread expanded sections
-  // This is handled by the list drag — when a task is dropped onto a row inside
-  // a .field-subtask-list, it joins that thread
-  const subLists=[...document.querySelectorAll('#field-list .field-subtask-list')];
-  subLists.forEach(subList=>{
-    const threadRow=subList.closest('.queue-item');
-    const fieldId=threadRow?.dataset.id;
-    if(!fieldId)return;
-    subList.addEventListener('dragover',(e)=>{e.preventDefault();e.stopPropagation();});
+// ── FLUID CONTAINERS: drag task out of thread into field list ─────────────────
+// We handle this by detecting when a standalone task drag ends over the field list
+// and when a subtask drag ends outside its container
+let fDragOutSubIdx=null, fDragOutFieldId=null;
+
+function initFieldDropZones(){
+  // Allow subtask rows to be dragged OUT to field position
+  // Handled by detecting drop target in the main field rows
+  const fieldRows=[...document.querySelectorAll('#field-list>.queue-item')];
+
+  // Allow standalone tasks to be dragged INTO an expanded thread's subtask list
+  document.querySelectorAll('.field-subtask-list').forEach(subList=>{
+    const fieldId=subList.dataset.fieldId;
+    subList.addEventListener('dragover',(e)=>{
+      e.preventDefault();e.stopPropagation();
+      // Visual indicator
+      subList.style.outline='1px solid rgba(200,169,110,0.3)';
+    });
+    subList.addEventListener('dragleave',()=>{ subList.style.outline=''; });
     subList.addEventListener('drop',(e)=>{
       e.preventDefault();e.stopPropagation();
+      subList.style.outline='';
       if(fDragIdx===null)return;
       const dragged=fieldTasks[fDragIdx];
-      if(!dragged||dragged.type==='thread')return;
+      if(!dragged||dragged.type==='thread'||dragged.id===fieldId)return;
       const target=fieldTasks.find(t=>t.id===fieldId);
       if(!target||target.type!=='thread')return;
-      // Remove from fieldTasks, add as subtask
+      // Remove from field, add as subtask in target thread
       fieldTasks.splice(fDragIdx,1);
-      target.subtasks.push({id:uid(),text:dragged.text});
+      target.subtasks.push({id:uid(),text:dragged.text,done:false});
       target.expanded=true;
-      hideGhost();saveField();renderField();fDragIdx=null;
+      hideGhost();saveField();fDragIdx=null;renderField();
     });
   });
 }
 
 // ── SWIPE: field → seeds ──────────────────────────────────────────────────────
 function initFieldSwipeReturn(){
-  const rows=[...document.querySelectorAll('#field-list .queue-item')];
-  rows.forEach(row=>{
+  document.querySelectorAll('#field-list>.queue-item').forEach(row=>{
     const inner=row.querySelector('.item-inner');
     const reveal=row.querySelector('.swipe-reveal');
     if(!inner||!reveal)return;
@@ -693,7 +727,7 @@ function sendThreadToField(threadId){
   fieldTasks.push({
     id:uid(),text:thread.name,type:'thread',colour:thread.colour,
     fromThread:thread.name,threadId:thread.id,
-    subtasks:thread.tasks.map(t=>({id:uid(),text:t.text})),
+    subtasks:thread.tasks.map(t=>({id:uid(),text:t.text,done:false})),
     subtaskIdx:0,expanded:false
   });
   saveField();flashNavLabel('field');
@@ -707,7 +741,7 @@ function addThread(){
 }
 function removeThread(id){delete threadsMap[id];seedsOrder=seedsOrder.filter(e=>e.id!==id);saveThreads();saveOrder();renderSeeds();}
 function toggleThread(id){if(threadsMap[id]){threadsMap[id].open=!threadsMap[id].open;saveThreads();renderSeeds();}}
-function setThreadColour(threadId,colourKey){if(threadsMap[threadId]){threadsMap[threadId].colour=colourKey;saveThreads();closeAllSwatches();renderSeeds();}}
+function setThreadColour(tid,key){if(threadsMap[tid]){threadsMap[tid].colour=key;saveThreads();closeAllSwatches();renderSeeds();}}
 function addThreadTask(threadId){
   const inp=document.getElementById('thread-input-'+threadId);if(!inp)return;
   const val=inp.value.trim();if(!val)return;
@@ -738,7 +772,8 @@ function buildSeedTaskRow(task,orderIdx){
   const lbl=document.createElement('span');lbl.className='item-label seed-plain';lbl.textContent=task.text;
   attachLongPress(lbl,(val)=>{seedTasksMap[task.id].text=val;saveSeeds();});
   content.appendChild(lbl);inner.appendChild(content);
-  const rm=document.createElement('button');rm.className='remove-btn';rm.textContent='×';rm.style.color='#f0ead835';rm.setAttribute('data-seed-rm',task.id);
+  // Seeds: X to remove
+  const rm=document.createElement('button');rm.className='remove-btn';rm.textContent='×';rm.setAttribute('data-seed-rm',task.id);
   inner.appendChild(rm);row.appendChild(inner);
   initSeedTaskSwipe(row,inner,reveal,task.id);
   return row;
@@ -762,8 +797,8 @@ function buildThreadCard(thread,orderIdx){
   settingsBtn.appendChild(dot);
   settingsBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
-    if(activeSwatchThreadId===thread.id){closeAllSwatches();return;}
-    closeAllSwatches();activeSwatchThreadId=thread.id;
+    if(activeSwatchId===thread.id){closeAllSwatches();return;}
+    closeAllSwatches();activeSwatchId=thread.id;
     const popover=document.createElement('div');popover.className='swatch-popover';
     Object.entries(THREAD_COLOURS).forEach(([key,val])=>{
       const sw=document.createElement('div');sw.className='swatch-dot'+(thread.colour===key?' selected':'');
@@ -780,13 +815,13 @@ function buildThreadCard(thread,orderIdx){
   const body=document.createElement('div');body.className='thread-body'+(thread.open?' open':'');
   const bodyInner=document.createElement('div');bodyInner.className='thread-body-inner';
   thread.tasks.forEach((task,ti)=>{
-    const trow=document.createElement('div');trow.className='thread-task-row';trow.dataset.tid=thread.id;trow.dataset.taskid=task.id;trow.dataset.stidx=ti;
-    const stHandle=document.createElement('div');stHandle.className='subtask-drag-handle';stHandle.textContent='⠿';stHandle.style.color=col.base;
+    const trow=document.createElement('div');trow.className='thread-task-row';trow.dataset.stidx=ti;
+    const stH=document.createElement('div');stH.className='subtask-drag-handle';stH.textContent='⠿';stH.style.color=col.base;
     const tlbl=document.createElement('span');tlbl.className='thread-task-label';tlbl.style.color=col.base;tlbl.textContent=task.text;
     attachLongPress(tlbl,(val)=>{task.text=val;saveThreads();});
     const trm=document.createElement('button');trm.className='thread-inner-rm';trm.textContent='×';trm.style.color=col.base;
     trm.addEventListener('click',()=>removeThreadTask(thread.id,task.id));
-    trow.appendChild(stHandle);trow.appendChild(tlbl);trow.appendChild(trm);bodyInner.appendChild(trow);
+    trow.appendChild(stH);trow.appendChild(tlbl);trow.appendChild(trm);bodyInner.appendChild(trow);
   });
   const addRow=document.createElement('div');addRow.className='thread-add-row';
   const tInp=document.createElement('input');tInp.type='text';tInp.className='thread-task-input';
@@ -812,7 +847,7 @@ document.getElementById('add-thread-btn').addEventListener('click',addThread);
 
 // ── DRAG INFRASTRUCTURE ───────────────────────────────────────────────────────
 const ghostEl=document.getElementById('drag-ghost');
-let uDragIdx=null, fDragIdx=null, ghostOffX=0, ghostOffY=0;
+let uDragIdx=null,fDragIdx=null,ghostOffX=0,ghostOffY=0;
 function posGhost(x,y){ghostEl.style.left=(x-ghostOffX)+'px';ghostEl.style.top=(y-ghostOffY)+'px';}
 function showGhost(text,x,y){ghostEl.textContent=text;posGhost(x,y);ghostEl.style.opacity='1';}
 function hideGhost(){ghostEl.style.opacity='0';}
@@ -842,23 +877,23 @@ function initUnifiedDrag(){
   });
 }
 
-// Generic list drag (field)
+// Field list drag
 function getRowTarget(rows,y){for(const r of rows){const rect=r.getBoundingClientRect();if(y>=rect.top&&y<=rect.bottom)return{row:r,idx:parseInt(r.dataset.idx),above:y<rect.top+rect.height/2};}return null;}
 function applyRowDrop(arr,from,toIdx,above){if(from===null||from===toIdx)return;const moved=arr.splice(from,1)[0];let at=toIdx;if(from<toIdx)at--;if(!above)at++;at=Math.max(0,Math.min(at,arr.length));arr.splice(at,0,moved);}
 
 function initListDrag(listId,arr,onDone,labelFn){
   const listEl=document.getElementById(listId);
-  const rows=[...listEl.querySelectorAll('.queue-item')];
+  const rows=[...listEl.querySelectorAll(':scope>.queue-item')];
   rows.forEach((row,i)=>{
     const handle=row.querySelector('.drag-handle');row.draggable=true;
     row.addEventListener('dragstart',(e)=>{if(!e.target.closest('.drag-handle')){e.preventDefault();return;}fDragIdx=i;row.classList.add('dragging');const blank=document.createElement('canvas');blank.width=blank.height=1;e.dataTransfer.setDragImage(blank,0,0);const r=row.getBoundingClientRect();ghostOffX=e.clientX-r.left;ghostOffY=e.clientY-r.top;showGhost(labelFn(arr[i]),e.clientX,e.clientY);});
     row.addEventListener('drag',(e)=>{if(e.clientX||e.clientY)posGhost(e.clientX,e.clientY);});
-    row.addEventListener('dragover',(e)=>{e.preventDefault();listEl.querySelectorAll('.drop-above,.drop-below,.dragging').forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.clientY);if(t&&t.idx!==fDragIdx)t.row.classList.add(t.above?'drop-above':'drop-below');rows[fDragIdx]?.classList.add('dragging');});
-    row.addEventListener('drop',(e)=>{e.preventDefault();hideGhost();listEl.querySelectorAll('.drop-above,.drop-below,.dragging').forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.clientY);if(t)applyRowDrop(arr,fDragIdx,t.idx,t.above);fDragIdx=null;onDone();});
-    row.addEventListener('dragend',()=>{hideGhost();listEl.querySelectorAll('.drop-above,.drop-below,.dragging').forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));fDragIdx=null;});
+    row.addEventListener('dragover',(e)=>{e.preventDefault();e.stopPropagation();rows.forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.clientY);if(t&&t.idx!==fDragIdx)t.row.classList.add(t.above?'drop-above':'drop-below');rows[fDragIdx]?.classList.add('dragging');});
+    row.addEventListener('drop',(e)=>{e.preventDefault();hideGhost();rows.forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.clientY);if(t)applyRowDrop(arr,fDragIdx,t.idx,t.above);fDragIdx=null;onDone();});
+    row.addEventListener('dragend',()=>{hideGhost();rows.forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));fDragIdx=null;});
     handle.addEventListener('touchstart',(e)=>{fDragIdx=i;row.classList.add('dragging');const touch=e.touches[0],r=row.getBoundingClientRect();ghostOffX=touch.clientX-r.left;ghostOffY=touch.clientY-r.top;showGhost(labelFn(arr[i]),touch.clientX,touch.clientY);},{passive:true});
-    handle.addEventListener('touchmove',(e)=>{if(fDragIdx===null)return;e.preventDefault();const touch=e.touches[0];posGhost(touch.clientX,touch.clientY);listEl.querySelectorAll('.drop-above,.drop-below,.dragging').forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));rows[fDragIdx]?.classList.add('dragging');const t=getRowTarget(rows,touch.clientY);if(t&&t.idx!==fDragIdx)t.row.classList.add(t.above?'drop-above':'drop-below');},{passive:false});
-    handle.addEventListener('touchend',(e)=>{if(fDragIdx===null)return;hideGhost();listEl.querySelectorAll('.drop-above,.drop-below,.dragging').forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.changedTouches[0].clientY);if(t)applyRowDrop(arr,fDragIdx,t.idx,t.above);fDragIdx=null;onDone();});
+    handle.addEventListener('touchmove',(e)=>{if(fDragIdx===null)return;e.preventDefault();const touch=e.touches[0];posGhost(touch.clientX,touch.clientY);rows.forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));rows[fDragIdx]?.classList.add('dragging');const t=getRowTarget(rows,touch.clientY);if(t&&t.idx!==fDragIdx)t.row.classList.add(t.above?'drop-above':'drop-below');},{passive:false});
+    handle.addEventListener('touchend',(e)=>{if(fDragIdx===null)return;hideGhost();rows.forEach(el=>el.classList.remove('drop-above','drop-below','dragging'));const t=getRowTarget(rows,e.changedTouches[0].clientY);if(t)applyRowDrop(arr,fDragIdx,t.idx,t.above);fDragIdx=null;onDone();});
   });
 }
 
@@ -866,6 +901,7 @@ function initListDrag(listId,arr,onDone,labelFn){
 let stDragIdx=null,stThreadId=null;
 function initSeedsSubtaskDrag(bodyInner,thread){
   const rows=[...bodyInner.querySelectorAll('.thread-task-row')];
+  if(rows.length<2)return;
   rows.forEach((row,i)=>{
     const handle=row.querySelector('.subtask-drag-handle');
     const doEnd=(toIdx,above)=>{if(toIdx!==stDragIdx&&stDragIdx!==null){const t=threadsMap[stThreadId];if(t){const moved=t.tasks.splice(stDragIdx,1)[0];let at=toIdx;if(stDragIdx<toIdx)at--;if(!above)at++;at=Math.max(0,Math.min(at,t.tasks.length));t.tasks.splice(at,0,moved);saveThreads();}}stDragIdx=null;stThreadId=null;renderSeeds();};
