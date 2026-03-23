@@ -263,9 +263,28 @@ let currentPage = 'now';
 let navLocked = false;
 
 function nav(to) {
+  // If already in field and tapping field again — toggle bright mode
+  if (to === 'field' && currentPage === 'field') {
+    fieldBright = !fieldBright;
+    renderField();
+    // Visual feedback on the nav dot
+    const btns = ['nav-field','nav-field-f','nav-field-s'];
+    btns.forEach(id => {
+      const el = document.getElementById(id); if (!el) return;
+      el.style.color = fieldBright ? '#f0ead8' : '';
+      setTimeout(() => { el.style.color = ''; }, fieldBright ? 0 : 400);
+    });
+    return;
+  }
   if (to === currentPage || navLocked) return;
   navLocked = true;
   closeAllSwatches();
+
+  // Reset field state when leaving field
+  if (currentPage === 'field') {
+    fieldExpanded = false;
+    fieldBright   = false;
+  }
 
   const fromEl = document.getElementById('view-' + currentPage);
   const toEl   = document.getElementById('view-' + to);
@@ -316,7 +335,7 @@ function tc(c){return THREAD_COLOURS[c]||THREAD_COLOURS[DEFAULT_COLOUR];}
 // ── State ─────────────────────────────────────────────────────────────────────
 const SK = {field:'nf_field_v6', seedTasks:'nf_seedtasks_v2', threads:'nf_threads_v2', order:'nf_order_v2'};
 let fieldTasks=[], seedTasksMap={}, threadsMap={}, seedsOrder=[];
-let transitioning=false, fieldExpanded=false;
+let transitioning=false, fieldExpanded=false, fieldBright=false;
 
 function uid(){return Math.random().toString(36).slice(2,9);}
 
@@ -434,7 +453,7 @@ function showThreadCeremony(name,colour,cb){
 }
 
 // ── FIELD ─────────────────────────────────────────────────────────────────────
-const FIELD_CAP=5;
+const FIELD_CAP=3;
 
 function addFieldTask(){
   const inp=document.getElementById('field-input'),val=inp.value.trim();if(!val)return;
@@ -478,7 +497,8 @@ function renderField(){
     const dimColour=task.colour?tc(task.colour).dim:'rgba(240,234,216,0.30)';
     // Only the very first field item (the active one) gets full brightness
     // Everything else — including ALL subtasks inside threads — is dimmed
-    const labelColour=isFirst?baseColour:dimColour;
+    // Unless fieldBright is on, in which case everything is full brightness
+    const labelColour = (isFirst || fieldBright) ? baseColour : dimColour;
 
     const row=document.createElement('div');
     row.className='field-item';row.dataset.id=task.id;row.dataset.idx=i;row.dataset.type=task.type;
@@ -513,8 +533,8 @@ function renderField(){
       subList.dataset.fieldId=task.id;
       task.subtasks.forEach((st,si)=>{
         const isDone=st.done||si<task.subtaskIdx;
-        // Always use dimColour for subtasks — never bright
-        const stColour=dimColour;
+        // Always use dimColour for subtasks — never bright — unless fieldBright is on
+        const stColour = fieldBright ? baseColour : dimColour;
         const subRow=document.createElement('div');
         subRow.className='field-sub-row';subRow.dataset.stidx=si;subRow.dataset.subtaskId=st.id;subRow.dataset.parentId=task.id;
         const subH=document.createElement('div');subH.className='sub-drag-h';subH.textContent='⠿';subH.style.color=stColour;subH.dataset.subHandle='true';
