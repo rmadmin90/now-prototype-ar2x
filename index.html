@@ -101,12 +101,11 @@
     .sub-rm:active { opacity: 0.8; }
 
     /* Field separator block */
-    .field-separator { display: flex; align-items: center; width: 100%; min-height: 36px; position: relative; user-select: none; cursor: grab; border-bottom: 1px solid #f0ead80c; background: #0c0c0b; }
+    .field-separator { display: flex; align-items: center; width: 100%; min-height: 28px; position: relative; user-select: none; cursor: grab; background: transparent; }
     .field-separator.dragging { opacity: 0.22; }
     .field-separator.drop-above::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
     .field-separator.drop-below::after  { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
-    .sep-line { flex: 1; height: 1px; background: #f0ead820; margin: 0 16px 0 48px; border-radius: 1px; }
-    .sep-dot  { width: 4px; height: 4px; background: #f0ead825; border-radius: 50%; position: absolute; left: 50%; transform: translateX(-50%); }
+    .sep-line { flex: 1; height: 2px; background: #f0ead828; margin: 0 16px 0 16px; border-radius: 1px; }
 
     /* Add separator button */
     .field-add-sep { display: flex; align-items: center; justify-content: center; width: 100%; padding: 14px 0 2px; background: none; border: none; cursor: pointer; }
@@ -504,15 +503,8 @@ function renderField(){
   list.innerHTML='';
   if(!fieldTasks.length){list.innerHTML='<p class="empty-list">nothing here right now.</p>';footer.textContent='';fieldExpanded=false;return;}
   const showAll=fieldExpanded||fieldTasks.length<=FIELD_CAP;
-  // Separators don't count toward cap — always show them
-  const nonSepTasks=fieldTasks.filter(t=>t.type!=='separator');
-  const visible=showAll?fieldTasks:fieldTasks.reduce((acc,t)=>{
-    if(t.type==='separator'){acc.push(t);return acc;}
-    const nonSepSoFar=acc.filter(x=>x.type!=='separator').length;
-    if(nonSepSoFar<FIELD_CAP)acc.push(t);
-    return acc;
-  },[]);
-  const hiddenCount=nonSepTasks.length-Math.min(nonSepTasks.length,FIELD_CAP);
+  const visible=showAll?fieldTasks:fieldTasks.slice(0,FIELD_CAP);
+  const hiddenCount=fieldTasks.length-FIELD_CAP;
 
   visible.forEach((task,i)=>{
     // Separator block
@@ -521,8 +513,7 @@ function renderField(){
       sep.className='field-separator';sep.dataset.id=task.id;sep.dataset.idx=i;sep.dataset.type='separator';
       const handle=document.createElement('div');handle.className='drag-handle';handle.textContent='⠿';handle.dataset.handle='true';
       const line=document.createElement('div');line.className='sep-line';
-      const dot=document.createElement('div');dot.className='sep-dot';
-      sep.appendChild(handle);sep.appendChild(line);sep.appendChild(dot);
+      sep.appendChild(handle);sep.appendChild(line);
       // Long press to remove
       let sepTimer=null;
       sep.addEventListener('touchstart',(e)=>{if(e.target.closest('.drag-handle'))return;sepTimer=setTimeout(()=>{fieldTasks=fieldTasks.filter(t=>t.id!==task.id);saveField();renderField();},700);},{passive:true});
