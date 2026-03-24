@@ -100,9 +100,19 @@
     .sub-rm { width: 44px; height: 46px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; flex-shrink: 0; opacity: 0.28; transition: opacity 0.15s; }
     .sub-rm:active { opacity: 0.8; }
 
-    /* Field cap */
-    .field-cap-btn { width: 100%; padding: 12px 0; background: none; border: none; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #f0ead840; cursor: pointer; text-align: center; transition: color 0.2s; }
-    .field-cap-btn:active { color: #f0ead870; }
+    /* Field separator block */
+    .field-separator { display: flex; align-items: center; width: 100%; min-height: 36px; position: relative; user-select: none; cursor: grab; border-bottom: 1px solid #f0ead80c; background: #0c0c0b; }
+    .field-separator.dragging { opacity: 0.22; }
+    .field-separator.drop-above::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
+    .field-separator.drop-below::after  { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #c8a96e; border-radius: 2px; z-index: 5; }
+    .sep-line { flex: 1; height: 1px; background: #f0ead820; margin: 0 16px 0 48px; border-radius: 1px; }
+    .sep-dot  { width: 4px; height: 4px; background: #f0ead825; border-radius: 50%; position: absolute; left: 50%; transform: translateX(-50%); }
+
+    /* Add separator button */
+    .field-add-sep { display: flex; align-items: center; justify-content: center; width: 100%; padding: 14px 0 2px; background: none; border: none; cursor: pointer; }
+    .field-add-sep-inner { display: flex; align-items: center; gap: 8px; color: #f0ead830; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; transition: color 0.2s; }
+    .field-add-sep:active .field-add-sep-inner { color: #f0ead860; }
+    .field-add-sep-icon { font-size: 14px; line-height: 1; }
 
     /* ── SWIPE REVEAL ── */
     .swipe-reveal { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; display: flex; align-items: center; padding-left: 24px; pointer-events: none; opacity: 0; z-index: 0; }
@@ -218,6 +228,12 @@
           <button class="add-btn" onclick="addFieldTask()">add</button>
         </div>
         <div id="field-list"></div>
+        <button class="field-add-sep" id="field-add-sep-btn">
+          <div class="field-add-sep-inner">
+            <span class="field-add-sep-icon">+</span>
+            <span>separator</span>
+          </div>
+        </button>
         <p class="list-footer" id="field-footer"></p>
       </div>
     </div>
@@ -263,17 +279,11 @@ let currentPage = 'now';
 let navLocked = false;
 
 function nav(to) {
-  // If already in field and tapping field again — toggle bright mode
+  // If already in field and tapping field again — toggle bright + expanded together
   if (to === 'field' && currentPage === 'field') {
-    fieldBright = !fieldBright;
+    fieldBright   = !fieldBright;
+    fieldExpanded = fieldBright; // expand when bright, collapse when dim
     renderField();
-    // Visual feedback on the nav dot
-    const btns = ['nav-field','nav-field-f','nav-field-s'];
-    btns.forEach(id => {
-      const el = document.getElementById(id); if (!el) return;
-      el.style.color = fieldBright ? '#f0ead8' : '';
-      setTimeout(() => { el.style.color = ''; }, fieldBright ? 0 : 400);
-    });
     return;
   }
   if (to === currentPage || navLocked) return;
@@ -372,10 +382,10 @@ function closeAllSwatches(){document.querySelectorAll('.swatch-popover').forEach
 
 // ── NOW ───────────────────────────────────────────────────────────────────────
 function renderNow(){
-  const cur=fieldTasks[0]||null;
+  const cur=fieldTasks.find(t=>t.type!=='separator')||null;
   const textEl=document.getElementById('task-text'),lblEl=document.getElementById('task-thread-label');
   const tickBtn=document.getElementById('tick-btn'),addBtn=document.getElementById('now-add-btn');
-  document.getElementById('now-queued-label').textContent=fieldTasks.length>1?`+ ${fieldTasks.length-1} in field`:'';
+  document.getElementById('now-queued-label').textContent=fieldTasks.filter(t=>t.type!=='separator').length>1?`+ ${fieldTasks.filter(t=>t.type!=='separator').length-1} in field`:'';
   if(cur){
     const isThread=cur.type==='thread';
     const activeSub=isThread?cur.subtasks.find((s,i)=>i>=cur.subtaskIdx&&!s.done):null;
@@ -405,9 +415,9 @@ function fitText(el){
 }
 
 function done(){
-  if(!fieldTasks.length||transitioning)return;
+  if(!fieldTasks.find(t=>t.type!=='separator')||transitioning)return;
   transitioning=true;
-  const cur=fieldTasks[0],isThread=cur.type==='thread';
+  const cur=fieldTasks.find(t=>t.type!=='separator'),isThread=cur.type==='thread';
   const colour=cur.colour?tc(cur.colour).base:'#c8a96e';
   const circle=document.getElementById('tick-circle'),check=document.getElementById('tick-check'),lbl=document.getElementById('tick-label');
   circle.setAttribute('stroke',colour);circle.setAttribute('fill',colour+'18');
@@ -425,18 +435,18 @@ function done(){
         cur.subtaskIdx=nextIdx;saveField();transitioning=false;
         resetTick();textEl.classList.remove('out');renderNow();
       } else {
-        fieldTasks.shift();saveField();
+        fieldTasks=fieldTasks.filter(t=>t.id!==cur.id);saveField();
         showThreadCeremony(cur.fromThread,colour,()=>{transitioning=false;resetTick();textEl.classList.remove('out');renderNow();});
       }
     } else {
-      fieldTasks.shift();saveField();transitioning=false;
+      fieldTasks=fieldTasks.filter(t=>t.id!==cur.id);saveField();transitioning=false;
       resetTick();textEl.classList.remove('out');renderNow();
     }
   },420);
 }
 
 function resetTick(){
-  const next=fieldTasks[0];
+  const next=fieldTasks.find(t=>t.type!=='separator');
   const c=next?.colour?tc(next.colour).base+'50':'#f0ead830';
   const ck=next?.colour?tc(next.colour).base+'65':'#f0ead840';
   document.getElementById('tick-circle').setAttribute('stroke',c);
@@ -460,6 +470,13 @@ function addFieldTask(){
   fieldTasks.push({id:uid(),text:val,type:'task',colour:null,fromThread:null,subtasks:[],subtaskIdx:0,expanded:false});
   saveField();inp.value='';inp.focus();renderField();
 }
+
+function addFieldSeparator(){
+  fieldTasks.push({id:uid(),type:'separator'});
+  saveField();renderField();
+}
+
+document.getElementById('field-add-sep-btn').addEventListener('click', addFieldSeparator);
 
 function completeFieldTask(id){fieldTasks=fieldTasks.filter(t=>t.id!==id);saveField();renderField();}
 
@@ -487,12 +504,35 @@ function renderField(){
   list.innerHTML='';
   if(!fieldTasks.length){list.innerHTML='<p class="empty-list">nothing here right now.</p>';footer.textContent='';fieldExpanded=false;return;}
   const showAll=fieldExpanded||fieldTasks.length<=FIELD_CAP;
-  const visible=showAll?fieldTasks:fieldTasks.slice(0,FIELD_CAP);
-  const hiddenCount=fieldTasks.length-FIELD_CAP;
+  // Separators don't count toward cap — always show them
+  const nonSepTasks=fieldTasks.filter(t=>t.type!=='separator');
+  const visible=showAll?fieldTasks:fieldTasks.reduce((acc,t)=>{
+    if(t.type==='separator'){acc.push(t);return acc;}
+    const nonSepSoFar=acc.filter(x=>x.type!=='separator').length;
+    if(nonSepSoFar<FIELD_CAP)acc.push(t);
+    return acc;
+  },[]);
+  const hiddenCount=nonSepTasks.length-Math.min(nonSepTasks.length,FIELD_CAP);
 
   visible.forEach((task,i)=>{
+    // Separator block
+    if(task.type==='separator'){
+      const sep=document.createElement('div');
+      sep.className='field-separator';sep.dataset.id=task.id;sep.dataset.idx=i;sep.dataset.type='separator';
+      const handle=document.createElement('div');handle.className='drag-handle';handle.textContent='⠿';handle.dataset.handle='true';
+      const line=document.createElement('div');line.className='sep-line';
+      const dot=document.createElement('div');dot.className='sep-dot';
+      sep.appendChild(handle);sep.appendChild(line);sep.appendChild(dot);
+      // Long press to remove
+      let sepTimer=null;
+      sep.addEventListener('touchstart',(e)=>{if(e.target.closest('.drag-handle'))return;sepTimer=setTimeout(()=>{fieldTasks=fieldTasks.filter(t=>t.id!==task.id);saveField();renderField();},700);},{passive:true});
+      sep.addEventListener('touchend',()=>{if(sepTimer){clearTimeout(sepTimer);sepTimer=null;}});
+      sep.addEventListener('touchmove',()=>{if(sepTimer){clearTimeout(sepTimer);sepTimer=null;}});
+      list.appendChild(sep);
+      return;
+    }
     const isThread=task.type==='thread';
-    const isFirst=i===0;
+    const isFirst=fieldTasks.filter(t=>t.type!=='separator').indexOf(task)===0;
     const baseColour=task.colour?tc(task.colour).base:'#f0ead8';
     const dimColour=task.colour?tc(task.colour).dim:'rgba(240,234,216,0.30)';
     // Only the very first field item (the active one) gets full brightness
@@ -558,12 +598,6 @@ function renderField(){
     list.appendChild(row);
   });
 
-  if(fieldTasks.length>FIELD_CAP){
-    const capBtn=document.createElement('button');capBtn.className='field-cap-btn';
-    capBtn.textContent=fieldExpanded?'fold ↑':`and ${hiddenCount} more`;
-    capBtn.addEventListener('click',()=>{fieldExpanded=!fieldExpanded;renderField();});
-    list.appendChild(capBtn);
-  }
   footer.textContent=fieldTasks.length===1?'one thing.':`${fieldTasks.length} things. only the first one is real.`;
 
   initFieldDragSystem();
@@ -601,7 +635,7 @@ function clearFieldDropStyles(){
   document.querySelectorAll('.field-subtask-list.drop-target').forEach(el=>el.classList.remove('drop-target'));
 }
 
-function getFieldItems(){return[...document.querySelectorAll('#field-list>.field-item')];}
+function getFieldItems(){return[...document.querySelectorAll('#field-list>.field-item,#field-list>.field-separator')];}
 function getSubRows(fieldId){return[...document.querySelectorAll(`#field-list .field-subtask-list[data-field-id="${fieldId}"] .field-sub-row`)];}
 
 // Find what's under the pointer
@@ -637,7 +671,7 @@ function getDropInfo(clientY){
 function applyFieldDrop(dropInfo){
   if(!fDrag.active)return;
 
-  if(fDrag.type==='field-item'){
+  if(fDrag.type==='field-item'||fDrag.type==='separator'){
     const fromIdx=fDrag.sourceIdx;
     if(!dropInfo){hideGhost();clearFieldDropStyles();fDrag.active=false;return;}
 
@@ -725,11 +759,12 @@ function initFieldDragSystem(){
     item.draggable=true;
     item.addEventListener('dragstart',(e)=>{
       if(!e.target.closest('.drag-handle')){e.preventDefault();return;}
-      fDrag={active:true,type:'field-item',sourceFieldId:item.dataset.id,sourceIdx:i,el:item};
+      const isSep=item.classList.contains('field-separator');
+      fDrag={active:true,type:isSep?'separator':'field-item',sourceFieldId:item.dataset.id,sourceIdx:i,el:item};
       item.classList.add('dragging');
       const blank=document.createElement('canvas');blank.width=blank.height=1;e.dataTransfer.setDragImage(blank,0,0);
       const r=item.getBoundingClientRect();ghostOffX=e.clientX-r.left;ghostOffY=e.clientY-r.top;
-      showGhost(fieldTasks[i].text,e.clientX,e.clientY);
+      showGhost(isSep?'——':fieldTasks[i]?.text||'',e.clientX,e.clientY);
     });
     item.addEventListener('drag',(e)=>{if(e.clientX||e.clientY)posGhost(e.clientX,e.clientY);});
     item.addEventListener('dragover',(e)=>{
@@ -775,7 +810,7 @@ function initFieldDragSystem(){
     if(!handle)return;
     const isSubHandle=handle.dataset.subHandle==='true';
     const row=handle.closest('.field-sub-row');
-    const item=handle.closest('.field-item');
+    const item=handle.closest('.field-item,.field-separator');
     if(!item)return;
     const itemIdx=parseInt(item.dataset.idx);
     const touch=e.touches[0];
@@ -788,9 +823,10 @@ function initFieldDragSystem(){
       row.classList.add('st-dragging');
       showGhost(parentTask?.subtasks[si]?.text||'',touch.clientX,touch.clientY);
     } else {
-      fDrag={active:true,type:'field-item',sourceFieldId:item.dataset.id,sourceIdx:itemIdx,el:item};
+      const isSep=item.classList.contains('field-separator');
+      fDrag={active:true,type:isSep?'separator':'field-item',sourceFieldId:item.dataset.id,sourceIdx:itemIdx,el:item};
       item.classList.add('dragging');
-      showGhost(fieldTasks[itemIdx]?.text||'',touch.clientX,touch.clientY);
+      showGhost(isSep?'——':fieldTasks[itemIdx]?.text||'',touch.clientX,touch.clientY);
     }
   },{passive:true});
 
